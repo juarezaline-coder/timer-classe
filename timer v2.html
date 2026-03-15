@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="A Juarez">
+<meta name="copyright" content="© A Juarez - Tous droits réservés">
+<title>Timers Multiples - Classe</title>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    overflow: hidden;
+    color: #1a202c;
+  }
+
+  /* ── Header ── */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    -webkit-app-region: drag;
+  }
+
+  .logo {
+    font-family: 'Andika', 'Segoe UI', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+
+  .add-btn {
+    font-family: 'Andika', 'Segoe UI', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    background: #38a169;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background .18s, transform .12s, box-shadow .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.2px;
+    -webkit-app-region: no-drag;
+  }
+  .add-btn:hover { background: #276749; box-shadow: 0 3px 8px rgba(0,0,0,0.22); transform: translateY(-1px); }
+  .add-btn:active { transform: translateY(0); }
+
+  /* ── Timer zone ── */
+  #timersArea { position: fixed; inset: 56px 0 0 0; }
+
+  /* ── Timer card ── */
+  .timerContainer {
+    position: absolute;
+    top: 70px; left: 60px;
+    width: 300px;
+    background: #fff;
+    border: 1px solid #bee3f8;
+    border-left: 5px solid #3182ce;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+    animation: cardIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    transition: box-shadow 0.2s;
+  }
+  .timerContainer:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+  /* ── Poignées de redimensionnement ── */
+  .resizer {
+    position: absolute;
+    z-index: 10;
+  }
+  /* Coins */
+  .resizer.se { width: 18px; height: 18px; bottom: 0; right: 0; cursor: se-resize; border-radius: 0 0 10px 0; background: linear-gradient(135deg, transparent 50%, #cbd5e0 50%); }
+  .resizer.sw { width: 18px; height: 18px; bottom: 0; left: 0; cursor: sw-resize; border-radius: 0 0 0 10px; background: linear-gradient(225deg, transparent 50%, #cbd5e0 50%); }
+  .resizer.ne { width: 18px; height: 18px; top: 0;    right: 0; cursor: ne-resize; }
+  .resizer.nw { width: 18px; height: 18px; top: 0;    left: 0;  cursor: nw-resize; }
+  /* Bords */
+  .resizer.n  { height: 6px; left: 18px; right: 18px; top: 0;    cursor: n-resize; }
+  .resizer.s  { height: 6px; left: 18px; right: 18px; bottom: 0; cursor: s-resize; }
+  .resizer.e  { width: 6px;  top: 18px; bottom: 18px; right: 0;  cursor: e-resize; }
+  .resizer.w  { width: 6px;  top: 18px; bottom: 18px; left: 0;   cursor: w-resize; }
+  /* Indicateur visuel coin SE */
+  .resizer.se::after {
+    content: '';
+    position: absolute;
+    bottom: 4px; right: 4px;
+    width: 8px; height: 8px;
+    border-right: 2px solid #3182ce;
+    border-bottom: 2px solid #3182ce;
+    border-radius: 1px;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: scale(0.88) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes cardOut {
+    to { opacity: 0; transform: scale(0.88) translateY(8px); }
+  }
+
+  /* ── Drag handle ── */
+  .drag-handle {
+    display: flex; align-items: center; gap: 8px;
+    cursor: move;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .timer-badge {
+    font-family: 'Andika', sans-serif;
+    font-size: 11px; font-weight: 700;
+    color: white; padding: 3px 10px;
+    border-radius: 20px; flex-shrink: 0;
+  }
+
+  .timer-label {
+    flex: 1;
+    font-family: 'Andika', 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2d3748;
+    border: none;
+    border-bottom: 1.5px dashed #cbd5e0;
+    background: transparent;
+    outline: none;
+    padding: 2px 4px;
+    min-width: 0;
+    cursor: text;
+    transition: border-color 0.2s;
+  }
+  .timer-label::placeholder { color: #cbd5e0; font-weight: 400; }
+  .timer-label:focus { border-bottom-color: #3182ce; }
+
+
+    flex: 1; display: flex; gap: 3px;
+    align-items: center; justify-content: center; opacity: 0.25;
+  }
+  .grip span {
+    display: block; width: 3px; height: 3px;
+    border-radius: 50%; background: #666;
+    box-shadow: 0 6px 0 #666, 0 12px 0 #666, 0 -6px 0 #666;
+  }
+  .grip span:nth-child(2) { margin-left: 4px; }
+
+  .delete-btn {
+    background: transparent; border: none;
+    font-size: 17px; line-height: 1; color: #a0aec0;
+    cursor: pointer; padding: 2px 5px; border-radius: 6px;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .delete-btn:hover { color: #e53e3e; background: #fff5f5; }
+
+  /* ── Canvas ── */
+  .canvas-wrap { position: relative; flex: 1; min-height: 180px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* ── Affichage temps — noir fixe, Andika ── */
+  .time-display {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a202c;
+    letter-spacing: 3px;
+    text-align: center;
+    line-height: 1.1;
+    padding: 4px 0 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Boutons +/− ── */
+  .adjusters {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+
+  .adj {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 700;
+    padding: 7px 2px; border-radius: 8px; border: none;
+    cursor: pointer; color: #fff; text-align: center; line-height: 1;
+    transition: background .18s, transform .12s, box-shadow .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.13);
+  }
+  .adj:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); }
+  .adj:active { transform: translateY(0); }
+
+  .adj.neg { background: #3182ce; }
+  .adj.neg:hover { background: #2b6cb0; }
+
+  .adj.pos { background: #553c9a; }
+  .adj.pos:hover { background: #44337a; }
+
+  /* ── Boutons principaux ── */
+  .main-controls { display: flex; gap: 6px; }
+
+  .ctrl {
+    flex: 1;
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 13px;
+    padding: 10px 8px; border-radius: 8px; border: none;
+    cursor: pointer; color: white;
+    transition: background .18s, transform .12s, box-shadow .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .ctrl:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.18); }
+  .ctrl:active { transform: translateY(0); }
+
+  .ctrl.start { background: #38a169; }
+  .ctrl.start:hover { background: #276749; }
+  .ctrl.start.running { background: #e67e22; }
+  .ctrl.start.running:hover { background: #ca6f1e; }
+  .ctrl.reset { background: #718096; }
+  .ctrl.reset:hover { background: #4a5568; }
+
+  /* ── Toggle sons ── */
+  .sound-row { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+  .sound-row label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #4a5568; cursor: pointer;
+    font-weight: 600; font-family: 'Andika', sans-serif;
+  }
+  .toggle { position: relative; width: 34px; height: 19px; flex-shrink: 0; }
+  .toggle input { display: none; }
+  .t-track { position: absolute; inset: 0; background: #e2e8f0; border-radius: 20px; transition: background 0.2s; cursor: pointer; }
+  .t-thumb { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; background: white; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: left 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .toggle input:checked ~ .t-track { background: #38a169; }
+  .toggle input:checked ~ .t-thumb { left: 18px; }
+
+  /* ── Empty state ── */
+  .empty { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; color: #a0aec0; }
+  .empty-icon { font-size: 52px; margin-bottom: 12px; }
+  .empty h2 { font-size: 17px; font-weight: 700; color: #718096; margin-bottom: 4px; font-family: 'Andika', sans-serif; }
+  .empty p  { font-size: 13px; font-family: 'Andika', sans-serif; }
+
+  /* ── Flash fin ── */
+  @keyframes flashRed {
+    0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    25%,75%  { box-shadow: 0 0 0 4px rgba(229,62,62,0.5), 0 8px 24px rgba(229,62,62,0.25); }
+  }
+  .flash { animation: flashRed 0.8s ease; }
+  /* ── Boutons fenêtre ── */
+  .win-controls { display:flex; gap:5px; -webkit-app-region:no-drag; margin-left:10px; }
+  .win-btn {
+    width:30px; height:30px;
+    border-radius:8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    cursor:pointer;
+    font-size:14px;
+    font-weight:700;
+    font-family:'Andika','Segoe UI',sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    transition: all 0.15s;
+    background: rgba(255,255,255,0.15);
+    color: white;
+  }
+  .win-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-1px); }
+  .win-btn.close:hover { background: rgba(229,62,62,0.85); border-color: rgba(229,62,62,0.6); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⏱</div>
+    Timers Classe
+  </div>
+  <button class="add-btn" onclick="createTimer()">✚ Nouveau Timer</button>
+  <div class="win-controls">
+    <button class="win-btn minimize" onclick="minWin()">—</button>
+    <button class="win-btn close" onclick="closeWin()">✕</button>
+  </div>
+</header>
+
+<div id="empty" class="empty">
+  <div class="empty-icon">⏱</div>
+  <h2>Aucun timer actif</h2>
+  <p>Clique sur "Nouveau Timer" pour commencer</p>
+</div>
+
+<div id="timersArea"></div>
+
+<footer style="position:fixed; bottom:6px; right:12px; font-family:'Andika','Segoe UI',sans-serif; font-size:11px; color:#a0aec0; pointer-events:none; z-index:50; letter-spacing:0.3px;">
+  © A Juarez — Tous droits réservés
+</footer>
+
+<script>
+function minWin() {
+  try { require('electron').ipcRenderer.send('minimize'); } catch(e) {}
+}
+function closeWin() {
+  try { require('electron').ipcRenderer.send('close'); } catch(e) {}
+}
+
+let count = 0;
+const COLORS = [
+  { bg: 'linear-gradient(135deg,#3182ce,#2b6cb0)', hex: '#3182ce' },
+  { bg: 'linear-gradient(135deg,#d53f8c,#b83280)', hex: '#d53f8c' },
+  { bg: 'linear-gradient(135deg,#553c9a,#44337a)', hex: '#553c9a' },
+  { bg: 'linear-gradient(135deg,#e67e22,#ca6f1e)', hex: '#e67e22' },
+  { bg: 'linear-gradient(135deg,#38a169,#276749)', hex: '#38a169' },
+  { bg: 'linear-gradient(135deg,#2b6cb0,#1a365d)', hex: '#2b6cb0' },
+];
+
+function playBeep(freq=440, dur=100) {
+  try {
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.09, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur/1000);
+    o.start(); o.stop(ac.currentTime + dur/1000);
+  } catch(e) {}
+}
+
+function beepNote(ctx, freq, start, dur, type='square', vol=0.18, slide) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = type;
+  o.frequency.setValueAtTime(freq, ctx.currentTime + start);
+  if (slide) o.frequency.linearRampToValueAtTime(slide, ctx.currentTime + start + dur);
+  g.gain.setValueAtTime(vol, ctx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+  o.start(ctx.currentTime + start);
+  o.stop(ctx.currentTime + start + dur + 0.05);
+}
+
+// Passage orange : double bip
+function playOrange() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    beepNote(c, 880, 0,    0.1, 'square', 0.18);
+    beepNote(c, 880, 0.15, 0.1, 'square', 0.18);
+  } catch(e) {}
+}
+
+// Passage rouge : bip pulsé x4
+function playRouge() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    const o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = 'sawtooth'; o.frequency.value = 900;
+    g.gain.setValueAtTime(0, c.currentTime);
+    for (let i = 0; i < 4; i++) {
+      g.gain.setValueAtTime(0.18, c.currentTime + i * 0.1);
+      g.gain.setValueAtTime(0.001, c.currentTime + i * 0.1 + 0.07);
+    }
+    o.start(); o.stop(c.currentTime + 0.45);
+  } catch(e) {}
+}
+
+// Fin : fanfare 3 notes cuivre
+function playFin() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    beepNote(c, 523,  0,    0.18, 'square', 0.15);
+    beepNote(c, 784,  0.22, 0.18, 'square', 0.15);
+    beepNote(c, 1047, 0.44, 0.35, 'square', 0.15);
+    beepNote(c, 262,  0,    0.18, 'sine',   0.08);
+    beepNote(c, 392,  0.22, 0.18, 'sine',   0.08);
+    beepNote(c, 523,  0.44, 0.35, 'sine',   0.08);
+  } catch(e) {}
+}
+
+function checkEmpty() {
+  document.getElementById('empty').style.display =
+    document.querySelectorAll('.timerContainer').length ? 'none' : '';
+}
+
+function createTimer() {
+  count++;
+  const col = COLORS[(count-1) % COLORS.length];
+  const off = 70 + (count-1)*28;
+  const uid = 'snd'+count;
+
+  const el = document.createElement('div');
+  el.className = 'timerContainer';
+  el.style.left = off+'px';
+  el.style.top  = off+'px';
+
+  el.innerHTML = `
+    <div class="resizer n"></div>
+    <div class="resizer s"></div>
+    <div class="resizer e"></div>
+    <div class="resizer w"></div>
+    <div class="resizer nw"></div>
+    <div class="resizer ne"></div>
+    <div class="resizer sw"></div>
+    <div class="resizer se"></div>
+
+    <div class="drag-handle" data-drag>
+      <div class="timer-badge" style="background:${col.bg}">Timer ${count}</div>
+      <input class="timer-label" type="text" placeholder="Groupe, élève…" maxlength="30">
+      <div class="grip"><span></span><span></span></div>
+      <button class="delete-btn" onclick="delTimer(this)" title="Supprimer">✕</button>
+    </div>
+
+    <div class="canvas-wrap"><canvas></canvas></div>
+    <div class="time-display">05:00</div>
+
+    <div class="adjusters">
+      <button class="adj neg" onclick="gt(this).add(-600)">−10m</button>
+      <button class="adj neg" onclick="gt(this).add(-300)">−5m</button>
+      <button class="adj neg" onclick="gt(this).add(-60)">−1m</button>
+      <button class="adj neg" onclick="gt(this).add(-10)">−10s</button>
+      <button class="adj neg" onclick="gt(this).add(-5)">−5s</button>
+    </div>
+    <div class="adjusters">
+      <button class="adj pos" onclick="gt(this).add(600)">+10m</button>
+      <button class="adj pos" onclick="gt(this).add(300)">+5m</button>
+      <button class="adj pos" onclick="gt(this).add(60)">+1m</button>
+      <button class="adj pos" onclick="gt(this).add(10)">+10s</button>
+      <button class="adj pos" onclick="gt(this).add(5)">+5s</button>
+    </div>
+
+    <div class="main-controls">
+      <button class="ctrl start" onclick="gt(this).toggle(this)">▶ Démarrer</button>
+      <button class="ctrl reset" onclick="gt(this).reset(this)">↺ Reset</button>
+    </div>
+
+    <div class="sound-row">
+      <label>
+        <div class="toggle">
+          <input type="checkbox" id="${uid}" checked>
+          <div class="t-track"></div>
+          <div class="t-thumb"></div>
+        </div>
+        Sons
+      </label>
+    </div>
+  `;
+
+  document.getElementById('timersArea').appendChild(el);
+  checkEmpty();
+
+  const t = new Timer(
+    el.querySelector('canvas'),
+    el.querySelector('.time-display'),
+    el.querySelector('#'+uid),
+    col.hex
+  );
+  el._t = t;
+  makeDraggable(el);
+}
+
+function gt(el) { return el.closest('.timerContainer')._t; }
+
+function delTimer(btn) {
+  const el = btn.closest('.timerContainer');
+  el._t.running = false;
+  el.style.animation = 'cardOut 0.22s ease forwards';
+  setTimeout(() => { el.remove(); checkEmpty(); }, 220);
+}
+
+class Timer {
+  constructor(canvas, disp, sndCb, accentColor) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.disp = disp;
+    this.sndCb = sndCb;
+    this.accent = accentColor;
+    this.total = 300;
+    this.remaining = 300;
+    this.running = false;
+    this.last = Date.now();
+    this.lastPhase = '';
+    this.raf();
+  }
+
+  add(s) {
+    this.remaining = Math.max(5, Math.min(3600, this.remaining + s));
+    if (!this.running) this.total = this.remaining;
+  }
+
+  toggle(btn) {
+    this.running = !this.running;
+    this.last = Date.now();
+    if (btn) {
+      btn.textContent = this.running ? '⏸ Pause' : '▶ Démarrer';
+      btn.classList.toggle('running', this.running);
+    }
+  }
+
+  reset(resetBtn) {
+    this.running = false;
+    this.remaining = this.total;
+    const startBtn = resetBtn ? resetBtn.previousElementSibling : null;
+    if (startBtn) {
+      startBtn.textContent = '▶ Démarrer';
+      startBtn.classList.remove('running');
+    }
+  }
+
+  phase() {
+    const r = this.remaining / this.total;
+    if (r > 0.5) return { id:'g', arc:'#1d8348' };
+    if (r > 0.2) return { id:'o', arc:'#ff8800' };
+    return               { id:'r', arc:'#e8111a' };
+  }
+
+  draw() {
+    const cv = this.canvas, ctx = this.ctx;
+    const dpr = window.devicePixelRatio||1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w*dpr; cv.height = h*dpr;
+    ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+
+    const cx=w/2, cy=h/2;
+    const R = Math.min(w,h)/2 - 10;
+    const ph = this.phase();
+
+    if (ph.id !== this.lastPhase && this.lastPhase && this.sndCb.checked && this.remaining>0) {
+      if (ph.id === 'o') playOrange();
+      if (ph.id === 'r') playRouge();
+    }
+    this.lastPhase = ph.id;
+
+    // Fond gris très clair
+    ctx.beginPath();
+    ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle = '#edf2f7';
+    ctx.fill();
+
+    // Contour
+    ctx.beginPath();
+    ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#cbd5e0';
+    ctx.stroke();
+
+    // Secteur plein
+    const ratio = this.remaining / this.total;
+    const sa = -Math.PI/2;
+    const ea = sa - ratio * Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,sa,ea,true);
+    ctx.closePath();
+    ctx.fillStyle = ph.arc;
+    ctx.fill();
+
+    // Temps
+    const m = Math.floor(this.remaining/60);
+    const s = Math.floor(this.remaining%60);
+    this.disp.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  raf() {
+    const now = Date.now();
+    if (this.running) {
+      this.remaining -= (now - this.last)/1000;
+      if (this.remaining <= 0) {
+        this.remaining = 0;
+        this.running = false;
+        if (this.sndCb.checked) {
+          playFin();
+        }
+        const card = this.canvas.closest('.timerContainer');
+        if (card) {
+          card.classList.add('flash');
+          setTimeout(()=>card.classList.remove('flash'),900);
+          const sb = card.querySelector('.ctrl.start');
+          if (sb) { sb.textContent='▶ Démarrer'; sb.classList.remove('running'); }
+        }
+      }
+    }
+    this.last = now;
+    this.draw();
+    requestAnimationFrame(()=>this.raf());
+  }
+}
+
+function makeDraggable(el) {
+  const handle = el.querySelector('[data-drag]');
+  const MIN_W = 80, MIN_H = 80;
+  let mode = null, startX, startY, startW, startH, startL, startT;
+
+  // ── Drag ──
+  handle.addEventListener('mousedown', e => {
+    if (e.target.closest('.delete-btn') || e.target.closest('.timer-label')) return;
+    mode = 'drag';
+    startX = e.clientX; startY = e.clientY;
+    startL = parseInt(el.style.left)||el.offsetLeft;
+    startT = parseInt(el.style.top)||el.offsetTop;
+    el.style.zIndex = 999;
+    e.preventDefault();
+  });
+
+  // ── Resize ──
+  el.querySelectorAll('.resizer').forEach(r => {
+    r.addEventListener('mousedown', e => {
+      const dir = [...r.classList].find(c => c !== 'resizer');
+      mode = 'resize-' + dir;
+      startX = e.clientX; startY = e.clientY;
+      startW = el.offsetWidth; startH = el.offsetHeight;
+      startL = parseInt(el.style.left)||el.offsetLeft;
+      startT = parseInt(el.style.top)||el.offsetTop;
+      el.style.zIndex = 999;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!mode) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (mode === 'drag') {
+      el.style.left = (startL + dx) + 'px';
+      el.style.top  = (startT + dy) + 'px';
+      return;
+    }
+
+    let w = startW, h = startH, l = startL, t = startT;
+    const dir = mode.replace('resize-','');
+
+    if (dir.includes('e')) w = Math.max(MIN_W, startW + dx);
+    if (dir.includes('s')) h = Math.max(MIN_H, startH + dy);
+    if (dir.includes('w')) { w = Math.max(MIN_W, startW - dx); l = startL + startW - w; }
+    if (dir.includes('n')) { h = Math.max(MIN_H, startH - dy); t = startT + startH - h; }
+
+    el.style.width  = w + 'px';
+    el.style.height = h + 'px';
+    el.style.left   = l + 'px';
+    el.style.top    = t + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (mode) { mode = null; el.style.zIndex = ''; }
+  });
+}
+
+checkEmpty();
+</script>
+</body>
+</html>

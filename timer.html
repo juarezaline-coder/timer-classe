@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="A Juarez">
+<meta name="copyright" content="© A Juarez - Tous droits réservés">
+<title>Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: transparent;
+    overflow: hidden;
+    color: #1a202c;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Carte timer ── */
+  .timerContainer {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #bee3f8;
+    border-left: 5px solid #3182ce;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  /* ── Barre du haut ── */
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: move;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    user-select: none;
+  }
+
+  .timer-badge {
+    font-family: 'Andika', sans-serif;
+    font-size: 11px; font-weight: 700;
+    color: white; padding: 3px 10px;
+    border-radius: 20px; flex-shrink: 0;
+    background: linear-gradient(135deg,#3182ce,#2b6cb0);
+    -webkit-app-region: no-drag;
+    cursor: default;
+  }
+
+  .timer-label {
+    flex: 1;
+    font-family: 'Andika', 'Segoe UI', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: #2d3748;
+    border: none;
+    border-bottom: 1.5px dashed #cbd5e0;
+    background: transparent;
+    outline: none;
+    padding: 2px 4px;
+    min-width: 0;
+    cursor: text;
+    transition: border-color 0.2s;
+    -webkit-app-region: no-drag;
+  }
+  .timer-label::placeholder { color: #cbd5e0; font-weight: 400; }
+  .timer-label:focus { border-bottom-color: #3182ce; }
+
+  .win-controls {
+    display: flex; gap: 5px;
+    -webkit-app-region: no-drag;
+  }
+  .win-btn {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    border: 1px solid rgba(0,0,0,0.12);
+    cursor: pointer;
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    background: #f7f8fa;
+    color: #4a5568;
+  }
+  .win-btn:hover { background: #e2e8f0; }
+  .win-btn.close:hover { background: #e53e3e; color: white; border-color: #e53e3e; }
+
+  /* ── Canvas ── */
+  .canvas-wrap { position: relative; flex: 1; min-height: 80px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* ── Temps ── */
+  .time-display {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 26px; font-weight: 700;
+    color: #1a202c;
+    letter-spacing: 3px;
+    text-align: center;
+    line-height: 1.1;
+    padding: 4px 0 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Boutons +/− ── */
+  .adjusters {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .adj {
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 12px; font-weight: 700;
+    padding: 7px 2px; border-radius: 8px; border: none;
+    cursor: pointer; color: #fff; text-align: center; line-height: 1;
+    transition: background .18s, transform .12s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.13);
+  }
+  .adj:hover { transform: translateY(-1px); }
+  .adj:active { transform: translateY(0); }
+  .adj.neg { background: #3182ce; }
+  .adj.neg:hover { background: #2b6cb0; }
+  .adj.pos { background: #553c9a; }
+  .adj.pos:hover { background: #44337a; }
+
+  /* ── Boutons principaux ── */
+  .main-controls { display: flex; gap: 6px; }
+  .ctrl {
+    flex: 1;
+    font-family: 'Andika', 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 13px;
+    padding: 10px 8px; border-radius: 8px; border: none;
+    cursor: pointer; color: white;
+    transition: background .18s, transform .12s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .ctrl:hover { transform: translateY(-1px); }
+  .ctrl:active { transform: translateY(0); }
+  .ctrl.start { background: #38a169; }
+  .ctrl.start:hover { background: #276749; }
+  .ctrl.start.running { background: #e67e22; }
+  .ctrl.start.running:hover { background: #ca6f1e; }
+  .ctrl.reset { background: #718096; }
+  .ctrl.reset:hover { background: #4a5568; }
+
+  /* ── Toggle sons ── */
+  .sound-row { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+  .sound-row label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #4a5568; cursor: pointer;
+    font-weight: 600; font-family: 'Andika', sans-serif;
+  }
+  .toggle { position: relative; width: 34px; height: 19px; flex-shrink: 0; }
+  .toggle input { display: none; }
+  .t-track { position: absolute; inset: 0; background: #e2e8f0; border-radius: 20px; transition: background 0.2s; cursor: pointer; }
+  .t-thumb { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; background: white; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: left 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .toggle input:checked ~ .t-track { background: #38a169; }
+  .toggle input:checked ~ .t-thumb { left: 18px; }
+
+  /* ── Poignées resize ── */
+  .resizer { position: absolute; z-index: 10; }
+  .resizer.se { width:16px; height:16px; bottom:0; right:0; cursor:se-resize; }
+  .resizer.sw { width:16px; height:16px; bottom:0; left:0;  cursor:sw-resize; }
+  .resizer.ne { width:16px; height:16px; top:0;   right:0; cursor:ne-resize; }
+  .resizer.nw { width:16px; height:16px; top:0;   left:0;  cursor:nw-resize; }
+  .resizer.n  { height:6px; left:16px; right:16px; top:0;    cursor:n-resize; }
+  .resizer.s  { height:6px; left:16px; right:16px; bottom:0; cursor:s-resize; }
+  .resizer.e  { width:6px;  top:16px; bottom:16px; right:0;  cursor:e-resize; }
+  .resizer.w  { width:6px;  top:16px; bottom:16px; left:0;   cursor:w-resize; }
+  .resizer.se::after {
+    content:''; position:absolute; bottom:3px; right:3px;
+    width:7px; height:7px;
+    border-right:2px solid #3182ce; border-bottom:2px solid #3182ce;
+  }
+
+  /* ── Flash fin ── */
+  @keyframes flashRed {
+    0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,0.18); }
+    25%,75%  { box-shadow: 0 0 0 4px rgba(229,62,62,0.6), 0 8px 24px rgba(229,62,62,0.3); }
+  }
+  .flash { animation: flashRed 0.8s ease; }
+</style>
+</head>
+<body>
+
+<div class="timerContainer" id="tc">
+  <div class="resizer n"></div>
+  <div class="resizer s"></div>
+  <div class="resizer e"></div>
+  <div class="resizer w"></div>
+  <div class="resizer nw"></div>
+  <div class="resizer ne"></div>
+  <div class="resizer sw"></div>
+  <div class="resizer se"></div>
+
+  <div class="drag-handle">
+    <div class="timer-badge">Timer</div>
+    <input class="timer-label" type="text" placeholder="Groupe, élève…" maxlength="30">
+    <div class="win-controls">
+      <button class="win-btn minimize" onclick="minWin()" title="Minimiser">—</button>
+      <button class="win-btn close"    onclick="closeWin()" title="Fermer">✕</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap"><canvas id="c"></canvas></div>
+  <div class="time-display" id="td">05:00</div>
+
+  <div class="adjusters">
+    <button class="adj neg" onclick="T.add(-600)">−10m</button>
+    <button class="adj neg" onclick="T.add(-300)">−5m</button>
+    <button class="adj neg" onclick="T.add(-60)">−1m</button>
+    <button class="adj neg" onclick="T.add(-10)">−10s</button>
+    <button class="adj neg" onclick="T.add(-5)">−5s</button>
+  </div>
+  <div class="adjusters">
+    <button class="adj pos" onclick="T.add(600)">+10m</button>
+    <button class="adj pos" onclick="T.add(300)">+5m</button>
+    <button class="adj pos" onclick="T.add(60)">+1m</button>
+    <button class="adj pos" onclick="T.add(10)">+10s</button>
+    <button class="adj pos" onclick="T.add(5)">+5s</button>
+  </div>
+
+  <div class="main-controls">
+    <button class="ctrl start" id="startBtn" onclick="T.toggle(this)">▶ Démarrer</button>
+    <button class="ctrl reset" onclick="T.reset(this)">↺ Reset</button>
+  </div>
+
+  <div class="sound-row">
+    <label>
+      <div class="toggle">
+        <input type="checkbox" id="snd" checked>
+        <div class="t-track"></div>
+        <div class="t-thumb"></div>
+      </div>
+      Sons
+    </label>
+  </div>
+</div>
+
+<script>
+const {ipcRenderer} = require('electron');
+
+function minWin()   { ipcRenderer.send('minimize'); }
+function closeWin() { ipcRenderer.send('close');    }
+
+function beepNote(ctx, freq, start, dur, type='square', vol=0.18, slide) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = type;
+  o.frequency.setValueAtTime(freq, ctx.currentTime + start);
+  if (slide) o.frequency.linearRampToValueAtTime(slide, ctx.currentTime + start + dur);
+  g.gain.setValueAtTime(vol, ctx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+  o.start(ctx.currentTime + start);
+  o.stop(ctx.currentTime + start + dur + 0.05);
+}
+
+function playOrange() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    beepNote(c, 880, 0, 0.1, 'square', 0.18);
+    beepNote(c, 880, 0.15, 0.1, 'square', 0.18);
+  } catch(e) {}
+}
+
+function playRouge() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    const o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = 'sawtooth'; o.frequency.value = 900;
+    g.gain.setValueAtTime(0, c.currentTime);
+    for (let i = 0; i < 4; i++) {
+      g.gain.setValueAtTime(0.18, c.currentTime + i*0.1);
+      g.gain.setValueAtTime(0.001, c.currentTime + i*0.1 + 0.07);
+    }
+    o.start(); o.stop(c.currentTime + 0.45);
+  } catch(e) {}
+}
+
+function playFin() {
+  try {
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    beepNote(c, 523,  0,    0.18, 'square', 0.15);
+    beepNote(c, 784,  0.22, 0.18, 'square', 0.15);
+    beepNote(c, 1047, 0.44, 0.35, 'square', 0.15);
+    beepNote(c, 262,  0,    0.18, 'sine',   0.08);
+    beepNote(c, 392,  0.22, 0.18, 'sine',   0.08);
+    beepNote(c, 523,  0.44, 0.35, 'sine',   0.08);
+  } catch(e) {}
+}
+
+class Timer {
+  constructor(canvas, disp, sndCb) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.disp = disp;
+    this.sndCb = sndCb;
+    this.total = 300;
+    this.remaining = 300;
+    this.running = false;
+    this.last = Date.now();
+    this.lastPhase = '';
+    this.raf();
+  }
+
+  add(s) {
+    this.remaining = Math.max(5, Math.min(3600, this.remaining + s));
+    if (!this.running) this.total = this.remaining;
+  }
+
+  toggle(btn) {
+    this.running = !this.running;
+    this.last = Date.now();
+    if (btn) {
+      btn.textContent = this.running ? '⏸ Pause' : '▶ Démarrer';
+      btn.classList.toggle('running', this.running);
+    }
+  }
+
+  reset(resetBtn) {
+    this.running = false;
+    this.remaining = this.total;
+    const startBtn = resetBtn ? resetBtn.previousElementSibling : null;
+    if (startBtn) {
+      startBtn.textContent = '▶ Démarrer';
+      startBtn.classList.remove('running');
+    }
+  }
+
+  phase() {
+    const r = this.remaining / this.total;
+    if (r > 0.5) return { id:'g', arc:'#1d8348' };
+    if (r > 0.2) return { id:'o', arc:'#ff8800' };
+    return               { id:'r', arc:'#e8111a' };
+  }
+
+  draw() {
+    const cv = this.canvas, ctx = this.ctx;
+    const dpr = window.devicePixelRatio||1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w*dpr; cv.height = h*dpr;
+    ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+    const cx=w/2, cy=h/2;
+    const R = Math.min(w,h)/2 - 10;
+    const ph = this.phase();
+
+    if (ph.id !== this.lastPhase && this.lastPhase && this.sndCb.checked && this.remaining>0) {
+      if (ph.id === 'o') playOrange();
+      if (ph.id === 'r') playRouge();
+    }
+    this.lastPhase = ph.id;
+
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle = '#edf2f7'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#cbd5e0'; ctx.stroke();
+
+    const ratio = this.remaining / this.total;
+    const sa = -Math.PI/2;
+    const ea = sa - ratio * Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,sa,ea,true); ctx.closePath();
+    ctx.fillStyle = ph.arc; ctx.fill();
+
+    const m = Math.floor(this.remaining/60);
+    const s = Math.floor(this.remaining%60);
+    this.disp.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  raf() {
+    const now = Date.now();
+    if (this.running) {
+      this.remaining -= (now - this.last)/1000;
+      if (this.remaining <= 0) {
+        this.remaining = 0;
+        this.running = false;
+        if (this.sndCb.checked) playFin();
+        document.getElementById('tc').classList.add('flash');
+        setTimeout(()=>document.getElementById('tc').classList.remove('flash'), 900);
+        const sb = document.getElementById('startBtn');
+        if (sb) { sb.textContent='▶ Démarrer'; sb.classList.remove('running'); }
+      }
+    }
+    this.last = now;
+    this.draw();
+    requestAnimationFrame(()=>this.raf());
+  }
+}
+
+const T = new Timer(
+  document.getElementById('c'),
+  document.getElementById('td'),
+  document.getElementById('snd')
+);
+
+// Déplacement de la fenêtre via la barre
+const handle = document.querySelector('.drag-handle')
+let dragging = false, startX, startY
+
+handle.addEventListener('mousedown', e => {
+  if (e.target.closest('.win-controls') || e.target.closest('.timer-label')) return
+  dragging = true
+  startX = e.screenX
+  startY = e.screenY
+  e.preventDefault()
+})
+
+document.addEventListener('mousemove', e => {
+  if (!dragging) return
+  const dx = e.screenX - startX
+  const dy = e.screenY - startY
+  startX = e.screenX
+  startY = e.screenY
+  ipcRenderer.send('move-win', { dx, dy })
+})
+
+document.addEventListener('mouseup', () => { dragging = false })
+
+</script>
+</body>
+</html>
